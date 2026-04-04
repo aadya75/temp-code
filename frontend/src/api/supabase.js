@@ -1,15 +1,57 @@
-import { createClient } from '@supabase/supabase-js'
+import axios from 'axios'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
 
-// Save analyzed repo to database
+// ============= GitHub Routes (via Backend) =============
+
+export const fetchRepoData = async (repoUrl) => {
+  try {
+    const response = await apiClient.post('/github/fetch-repo-data', { repo_url: repoUrl })
+    return response.data
+  } catch (error) {
+    return {
+      success: false,
+      error: error.response?.data?.detail || error.message || 'Failed to fetch repository'
+    }
+  }
+}
+
+export const fetchRepoTree = async (repoUrl) => {
+  try {
+    const response = await apiClient.post('/github/fetch-repo-tree', { repo_url: repoUrl })
+    return response.data
+  } catch (error) {
+    return {
+      success: false,
+      error: error.response?.data?.detail || error.message || 'Failed to fetch repository tree'
+    }
+  }
+}
+
+export const fetchAndUploadRepo = async (repoUrl) => {
+  try {
+    const response = await apiClient.post('/github/fetch-and-upload', { repo_url: repoUrl })
+    return response.data
+  } catch (error) {
+    return {
+      success: false,
+      error: error.response?.data?.detail || error.message || 'Failed to fetch and upload repository'
+    }
+  }
+}
+
+// ============= Database Routes (via Backend) =============
+
 export const saveAnalysis = async (userId, repoData, fileTree) => {
-  const { data, error } = await supabase
-    .from('analyzed_repos')
-    .insert([{
+  try {
+    const response = await apiClient.post('/github/save-analysis', {
       user_id: userId,
       repo_url: repoData.html_url,
       repo_name: repoData.name,
@@ -18,75 +60,66 @@ export const saveAnalysis = async (userId, repoData, fileTree) => {
       stars: repoData.stargazers_count,
       forks: repoData.forks_count,
       language: repoData.language,
-      file_tree: fileTree,
-      analyzed_at: new Date().toISOString()
-    }])
-    .select()
-  
-  if (error) throw error
-  return data[0]
+      file_tree: fileTree
+    })
+    return response.data
+  } catch (error) {
+    throw error.response?.data || error
+  }
 }
 
-// Get user's analysis history
 export const getAnalysisHistory = async (userId) => {
-  const { data, error } = await supabase
-    .from('analyzed_repos')
-    .select('*')
-    .eq('user_id', userId)
-    .order('analyzed_at', { ascending: false })
-  
-  if (error) throw error
-  return data
+  try {
+    const response = await apiClient.get(`/github/analysis-history/${userId}`)
+    return response.data
+  } catch (error) {
+    throw error.response?.data || error
+  }
 }
 
-// Get single analysis by ID
 export const getAnalysisById = async (analysisId) => {
-  const { data, error } = await supabase
-    .from('analyzed_repos')
-    .select('*')
-    .eq('id', analysisId)
-    .single()
-  
-  if (error) throw error
-  return data
+  try {
+    const response = await apiClient.get(`/github/analysis/${analysisId}`)
+    return response.data
+  } catch (error) {
+    throw error.response?.data || error
+  }
 }
 
-// Delete analysis
 export const deleteAnalysis = async (analysisId) => {
-  const { error } = await supabase
-    .from('analyzed_repos')
-    .delete()
-    .eq('id', analysisId)
-  
-  if (error) throw error
-  return true
+  try {
+    const response = await apiClient.delete(`/github/analysis/${analysisId}`)
+    return response.data
+  } catch (error) {
+    throw error.response?.data || error
+  }
 }
 
-// Save knowledge graph
 export const saveKnowledgeGraph = async (repoId, graphData) => {
-  const { data, error } = await supabase
-    .from('knowledge_graphs')
-    .insert([{
+  try {
+    const response = await apiClient.post('/github/save-knowledge-graph', {
       repo_id: repoId,
       graph_data: graphData,
       nodes_count: graphData.nodes?.length || 0,
       edges_count: graphData.edges?.length || 0
-    }])
-    .select()
-  
-  if (error) throw error
-  return data[0]
+    })
+    return response.data
+  } catch (error) {
+    throw error.response?.data || error
+  }
 }
 
-// Get knowledge graph
 export const getKnowledgeGraph = async (repoId) => {
-  const { data, error } = await supabase
-    .from('knowledge_graphs')
-    .select('*')
-    .eq('repo_id', repoId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-  
-  if (error) throw error
-  return data[0]
+  try {
+    const response = await apiClient.get(`/github/knowledge-graph/${repoId}`)
+    return response.data
+  } catch (error) {
+    throw error.response?.data || error
+  }
+}
+
+// Helper function
+export const validateGithubUrl = (url) => {
+  const regex = /^https?:\/\/github\.com\/[\w.-]+\/[\w.-]+/
+  return regex.test(url)
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import CytoscapeComponent from 'react-cytoscapejs'
-import { saveKnowledgeGraph, getKnowledgeGraph } from '../api/supabase'
+import { saveKnowledgeGraph, getKnowledgeGraph } from '../api/api'
 import './KnowledgeGraph.css'
 
 const KnowledgeGraph = ({ repoData, fileTree, repoId, onClose }) => {

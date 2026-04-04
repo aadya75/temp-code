@@ -1,236 +1,99 @@
-import { useState } from 'react'
-import { AuthProvider, useAuth } from './context/AuthContext'
-import { fetchRepoData, fetchRepoTree, buildFileTree, treeToArray } from './api/github'
-import { saveAnalysis, getAnalysisById } from './api/supabase'
-import RepoDialog from './components/RepoDialog'
-import FileTree from './components/FileTree'
-import FileViewer from './components/FileViewer'
-import Navbar from './components/Navbar'
-import Dashboard from './components/Dashboard'
-import KnowledgeGraph from './components/KnowledgeGraph'
-import './App.css'
+import React, { useEffect, useState } from 'react'
+import { useAuth } from './context/AuthContext'
+import { getAnalysisHistory } from './api/api'
+import LoginModal from './components/LoginModal'
 
-// Separate component that uses auth
-const AppContent = () => {
-  const { user, isAuthenticated } = useAuth()
-  const [currentView, setCurrentView] = useState('dashboard') // 'dashboard', 'analyzer'
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [repoInfo, setRepoInfo] = useState(null)
-  const [fileTree, setFileTree] = useState([])
-  const [selectedFile, setSelectedFile] = useState(null)
-  const [currentRepoUrl, setCurrentRepoUrl] = useState('')
-  const [treeLoading, setTreeLoading] = useState(false)
-  const [currentAnalysisId, setCurrentAnalysisId] = useState(null)
-  const [showGraph, setShowGraph] = useState(false)
+function App() {
+  const { user, isAuthenticated, loading: authLoading } = useAuth()
+  const [analysisHistory, setAnalysisHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
-  const handleAnalyzeRepo = async (url) => {
-    if (!isAuthenticated) {
-      alert('Please login first to analyze repositories')
-      return
-    }
-
-    setLoading(true)
-    setTreeLoading(true)
-    setCurrentRepoUrl(url)
-    
-    try {
-      const repoResult = await fetchRepoData(url)
-      
-      if (!repoResult.success) {
-        throw new Error(repoResult.error)
+  // Only fetch analysis history when user is authenticated
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!isAuthenticated || !user) {
+        setAnalysisHistory([])
+        return
       }
       
-      setRepoInfo(repoResult.data)
-      
-      const treeResult = await fetchRepoTree(url)
-      
-      if (treeResult.success && treeResult.data) {
-        const treeObj = buildFileTree(treeResult.data)
-        const treeArray = treeToArray(treeObj)
-        setFileTree(treeArray)
-        
-        // Save analysis to database
-        const savedAnalysis = await saveAnalysis(user.id, repoResult.data, treeArray)
-        setCurrentAnalysisId(savedAnalysis.id)
-        
-        if (treeArray.length === 0) {
-          alert('No files found in this repository.')
+      setLoadingHistory(true)
+      try {
+        const response = await getAnalysisHistory(user.id)
+        if (response.success) {
+          setAnalysisHistory(response.data)
         }
-      } else {
-        alert('Could not fetch file tree.')
+      } catch (error) {
+        console.error('Failed to fetch analysis history:', error)
+        setAnalysisHistory([])
+      } finally {
+        setLoadingHistory(false)
       }
-      
-      setIsDialogOpen(false)
-      setCurrentView('analyzer')
-    } catch (error) {
-      console.error('Analysis error:', error)
-      alert(`Error: ${error.message}`)
-    } finally {
-      setLoading(false)
-      setTreeLoading(false)
     }
-  }
 
-  const handleLoadAnalysis = async (analysis) => {
-    setLoading(true)
-    setRepoInfo({
-      full_name: analysis.full_name,
-      name: analysis.repo_name,
-      description: analysis.description,
-      stargazers_count: analysis.stars,
-      forks_count: analysis.forks,
-      language: analysis.language,
-      html_url: analysis.repo_url
-    })
-    setFileTree(analysis.file_tree || [])
-    setCurrentAnalysisId(analysis.id)
-    setCurrentRepoUrl(analysis.repo_url)
-    setCurrentView('analyzer')
-    setLoading(false)
-  }
+    fetchHistory()
+  }, [isAuthenticated, user])
 
-  const handleFileSelect = (file) => {
-    setSelectedFile(file)
-  }
-
-  const handleReset = () => {
-    setRepoInfo(null)
-    setFileTree([])
-    setSelectedFile(null)
-    setCurrentRepoUrl('')
-    setCurrentAnalysisId(null)
-    setCurrentView('dashboard')
-  }
-
-  const handleNewAnalysis = () => {
-    setIsDialogOpen(true)
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <p>Loading...</p>
+      </div>
+    )
   }
 
   return (
     <div className="app">
-      <Navbar 
-        onGetStarted={handleNewAnalysis}
-        onDashboard={() => setCurrentView('dashboard')}
-        currentView={currentView}
-      />
-
-      {currentView === 'dashboard' ? (
-        <Dashboard onSelectAnalysis={handleLoadAnalysis} />
-      ) : repoInfo ? (
-        <div className="analysis-container">
-          <aside className="sidebar">
-            <div className="repo-header">
-              <h2>{repoInfo.full_name}</h2>
-              {repoInfo.description && (
-                <p className="repo-desc">{repoInfo.description.slice(0, 100)}...</p>
-              )}
-              {treeLoading && <div className="loading-tree">Loading files...</div>}
-              
-              <div className="repo-actions-sidebar">
-                <button 
-                  className="btn-graph"
-                  onClick={() => setShowGraph(true)}
-                >
-                  🧠 Knowledge Graph
-                </button>
-                <button 
-                  className="btn-dashboard"
-                  onClick={handleReset}
-                >
-                  📊 Dashboard
-                </button>
-              </div>
-            </div>
-            {!treeLoading && (
-              <FileTree 
-                treeData={fileTree} 
-                onFileSelect={handleFileSelect}
-                selectedFile={selectedFile}
-              />
-            )}
-          </aside>
-
-          <main className="main-panel">
-            {selectedFile ? (
-              <FileViewer file={selectedFile} repoUrl={currentRepoUrl} />
-            ) : (
-              <div className="welcome-panel">
-                <div className="welcome-content">
-                  <h2>📁 Repository Explorer</h2>
-                  <p>Select a file from the sidebar to view its contents</p>
-                  <div className="repo-stats-summary">
-                    <div className="stat-badge">
-                      ⭐ {repoInfo.stargazers_count?.toLocaleString() || 0} stars
-                    </div>
-                    <div className="stat-badge">
-                      🍴 {repoInfo.forks_count?.toLocaleString() || 0} forks
-                    </div>
-                    <div className="stat-badge">
-                      💻 {repoInfo.language || 'N/A'}
-                    </div>
-                  </div>
-                  <div className="action-buttons">
-                    <a 
-                      href={repoInfo.html_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="github-link"
-                    >
-                      View on GitHub →
-                    </a>
-                    <button 
-                      className="btn-graph-main"
-                      onClick={() => setShowGraph(true)}
-                    >
-                      🧠 Generate Knowledge Graph
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </main>
+      {/* Your app content */}
+      {!isAuthenticated ? (
+        <div className="welcome-screen">
+          <h1>Welcome to GitHub Repo Analyzer</h1>
+          <button onClick={() => setShowLoginModal(true)}>
+            Get Started
+          </button>
         </div>
       ) : (
-        <main className="main-content">
-          <div className="hero">
-            <h1>🚀 GitHub Repository Analyzer Pro</h1>
-            <p>Explore any public GitHub repository with an interactive file tree and code viewer</p>
-            {!isAuthenticated && (
-              <p className="login-prompt">🔐 Please login to start analyzing repos</p>
-            )}
-            <button className="btn-hero" onClick={handleNewAnalysis}>
-              Get Started
+        <div className="dashboard">
+          <div className="header">
+            <h1>Your Analysis History</h1>
+            <button onClick={() => setShowLoginModal(true)}>
+              New Analysis
             </button>
           </div>
-        </main>
+          
+          {loadingHistory ? (
+            <div className="loading-state">
+              <div className="spinner"></div>
+              <p>Loading your analysis history...</p>
+            </div>
+          ) : analysisHistory.length === 0 ? (
+            <div className="empty-state">
+              <p>No analyses yet. Start by analyzing a repository!</p>
+            </div>
+          ) : (
+            <div className="history-list">
+              {analysisHistory.map((analysis) => (
+                <div key={analysis.id} className="analysis-card">
+                  <h3>{analysis.repo_name}</h3>
+                  <p>{analysis.description}</p>
+                  <div className="stats">
+                    <span>⭐ {analysis.stars}</span>
+                    <span>🍴 {analysis.forks}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
-      <RepoDialog 
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onSubmit={handleAnalyzeRepo}
-        loading={loading}
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
       />
-
-      {showGraph && repoInfo && (
-        <KnowledgeGraph 
-          repoData={repoInfo}
-          fileTree={fileTree}
-          repoId={currentAnalysisId}
-          onClose={() => setShowGraph(false)}
-        />
-      )}
     </div>
-  )
-}
-
-// Main App with AuthProvider
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
   )
 }
 

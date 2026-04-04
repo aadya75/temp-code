@@ -1,122 +1,29 @@
 from github import Github, GithubException
-from typing import Dict, Any, List, Optional
-import base64
+from app.config import settings
+from app.models.github import FileNode
 import logging
-import os
 from datetime import datetime
-from pydantic import BaseModel
-from typing import Optional
-
-class FileNode(BaseModel):
-    name: str          # Name of file/folder (e.g., "src", "index.js")
-    path: str          # Full path (e.g., "frontend/src/index.js")
-    type: str          # Either 'file' or 'directory'
-    size: Optional[int] = None  # File size in bytes (None for directories)
-    children: Optional[List['FileNode']] = None  # Nested items (only for directories)
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
 class GitHubService:
     def __init__(self):
-        # Add your token to .env!
-        github_token = os.getenv("GITHUB_TOKEN", None)
-        self.g = Github(github_token, timeout=30) if github_token else Github(timeout=30)
-    
-    async def get_repo_contents(self, repo_url: str) -> Dict[str, Any]:
-        """Fetch repository using Git Trees API (3-4 calls total)"""
         try:
-            # Parse URL
-            owner, repo_name = self.parse_github_url(repo_url)
+            # Check if github_token exists in settings
+            token = getattr(settings, 'github_token', None)
             
-            # API Call #1: Get repository
-            repo = self.g.get_repo(f"{owner}/{repo_name}")
-            
-            # API Call #2: Get default branch reference
-            default_branch = repo.default_branch
-            branch_ref = repo.get_git_ref(f"heads/{default_branch}")
-            
-            # API Call #3: Get the entire tree recursively (THIS IS THE MAGIC!)
-            # This returns ALL files and directories in ONE API call
-            tree = repo.get_git_tree(branch_ref.object.sha, recursive=True)
-            
-            # Build directory tree and collect file contents
-            file_tree = {}
-            files_content = {}
-            
-            # Process all items from the single tree response
-            for item in tree.tree:
-                if item.type == "blob":  # This is a file
-                    # Store file metadata
-                    path_parts = item.path.split('/')
-                    current_level = file_tree
-                    
-                    # Build nested dictionary structure
-                    for i, part in enumerate(path_parts):
-                        if i == len(path_parts) - 1:
-                            current_level[part] = {
-                                "type": "file",
-                                "size": item.size,
-                                "path": item.path
-                            }
-                        else:
-                            if part not in current_level:
-                                current_level[part] = {"type": "directory", "children": {}}
-                            current_level = current_level[part]["children"]
-                    
-                    # Optionally fetch file content (if needed)
-                    # This is an EXTRA call per file - only do if you really need content
-                    if item.size < 1000000:  # Only fetch files < 1MB
-                        try:
-                            file_content = repo.get_contents(item.path, ref=default_branch)
-                            files_content[item.path] = base64.b64decode(file_content.content).decode('utf-8', errors='ignore')
-                        except:
-                            files_content[item.path] = "Unable to decode"
-                    else:
-                        files_content[item.path] = f"File too large ({item.size} bytes)"
-            
-            # Convert nested dict to FileNode structure
-            tree_structure = self._dict_to_filenode(file_tree, repo_name)
-            
-            return {
-                "repo_name": repo_name,
-                "branch": default_branch,
-                "tree": tree_structure,
-                "files_content": files_content,
-                "fetched_at": datetime.now()
-            }
-            
-        except GithubException as e:
-            logger.error(f"GitHub API error: {e}")
-            raise Exception(f"Failed to fetch repository: {str(e)}")
-    
-    def _dict_to_filenode(self, data: Dict, name: str) -> FileNode:
-        """Convert nested dictionary to FileNode structure"""
-        children = []
-        
-        for key, value in data.items():
-            if value.get("type") == "file":
-                children.append(FileNode(
-                    name=key,
-                    path=value.get("path", key),
-                    type="file",
-                    size=value.get("size")
-                ))
+            if token:
+                self.g = Github(token, timeout=settings.github_api_timeout)
+                logger.info("Using authenticated GitHub API (higher rate limit)")
             else:
-                # Directory
-                child_node = self._dict_to_filenode(
-                    value.get("children", {}), 
-                    key
-                )
-                children.append(child_node)
-        
-        return FileNode(
-            name=name,
-            path="",
-            type="directory",
-            children=children
-        )
+                self.g = Github(timeout=settings.github_api_timeout)
+                logger.warning("Using unauthenticated GitHub API (60 requests/hour)")
+        except Exception as e:
+            logger.error(f"Error initializing GitHub client: {e}")
+            self.g = Github(timeout=30)
     
-    def parse_github_url(self, url: str) -> tuple[str, str]:
+    def parse_github_url(self, url: str):
         """Parse GitHub URL to extract owner and repo name"""
         import re
         url = url.rstrip('/')
@@ -133,3 +40,157 @@ class GitHubService:
             repo_name = repo_name[:-4]
         
         return owner, repo_name
+    
+    async def fetch_repo_data(self, repo_url: str) -> Dict[str, Any]:
+        """Fetch GitHub repository metadata"""
+        try:
+            owner, repo_name = self.parse_github_url(repo_url)
+            repo = self.g.get_repo(f"{owner}/{repo_name}")
+            
+            return {
+                "success": True,
+                "data": {
+                    "id": repo.id,
+                    "name": repo.name,
+                    "full_name": repo.full_name,
+                    "description": repo.description,
+                    "html_url": repo.html_url,
+                    "stargazers_count": repo.stargazers_count,
+                    "forks_count": repo.forks_count,
+                    "language": repo.language,
+                    "default_branch": repo.default_branch,
+                    "created_at": repo.created_at.isoformat() if repo.created_at else None,
+                    "updated_at": repo.updated_at.isoformat() if repo.updated_at else None
+                }
+            }
+        except GithubException as e:
+            logger.error(f"GitHub API error: {e}")
+            return {
+                "success": False,
+                "error": e.data.get("message", str(e)) if hasattr(e, 'data') else str(e)
+            }
+        except Exception as e:
+            logger.error(f"Error fetching repo data: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    async def fetch_repo_tree(self, repo_url: str, recursive: bool = True) -> Dict[str, Any]:
+        """Fetch repository file tree"""
+        try:
+            owner, repo_name = self.parse_github_url(repo_url)
+            repo = self.g.get_repo(f"{owner}/{repo_name}")
+            
+            default_branch = repo.default_branch
+            branch = repo.get_branch(default_branch)
+            tree = repo.get_git_tree(sha=branch.commit.sha, recursive=recursive)
+            
+            tree_items = []
+            for item in tree.tree:
+                tree_items.append({
+                    "path": item.path,
+                    "type": "blob" if item.type == "blob" else "tree",
+                    "size": item.size if item.type == "blob" else None,
+                    "sha": item.sha
+                })
+            
+            return {
+                "success": True,
+                "data": tree_items,
+                "default_branch": default_branch
+            }
+            
+        except GithubException as e:
+            logger.error(f"GitHub API error: {e}")
+            return {
+                "success": False,
+                "error": e.data.get("message", str(e)) if hasattr(e, 'data') else str(e)
+            }
+        except Exception as e:
+            logger.error(f"Error fetching repo tree: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    async def get_repo_contents(self, repo_url: str) -> Dict[str, Any]:
+        """Get full repository contents with file content"""
+        try:
+            owner, repo_name = self.parse_github_url(repo_url)
+            repo = self.g.get_repo(f"{owner}/{repo_name}")
+            
+            default_branch = repo.default_branch
+            branch = repo.get_branch(default_branch)
+            tree = repo.get_git_tree(sha=branch.commit.sha, recursive=True)
+            
+            file_tree = {}
+            files_content = {}
+            
+            for item in tree.tree:
+                if item.type == "blob":
+                    parts = item.path.split('/')
+                    current = file_tree
+                    for i, part in enumerate(parts):
+                        if i == len(parts) - 1:
+                            current[part] = {
+                                "name": part,
+                                "type": "file",
+                                "path": item.path,
+                                "size": item.size
+                            }
+                        else:
+                            if part not in current:
+                                current[part] = {
+                                    "name": part,
+                                    "type": "directory",
+                                    "children": {}
+                                }
+                            current = current[part]["children"]
+                    
+                    if item.size and item.size < 1000000:
+                        try:
+                            file_content = repo.get_contents(item.path, ref=default_branch)
+                            files_content[item.path] = file_content.decoded_content.decode('utf-8', errors='ignore')
+                        except:
+                            files_content[item.path] = "Unable to decode file content"
+            
+            tree_structure = self._dict_to_filenode(file_tree, repo_name)
+            
+            return {
+                "repo_name": repo_name,
+                "branch": default_branch,
+                "tree": tree_structure,
+                "files_content": files_content,
+                "fetched_at": datetime.now()
+            }
+            
+        except GithubException as e:
+            logger.error(f"GitHub API error: {e}")
+            raise Exception(f"Failed to fetch repository: {str(e)}")
+    
+    def _dict_to_filenode(self, data: dict, name: str) -> FileNode:
+        """Convert nested dictionary to FileNode structure"""
+        children = []
+        
+        for key, value in data.items():
+            if value.get("type") == "file":
+                children.append(FileNode(
+                    name=key,
+                    path=value.get("path", key),
+                    type="file",
+                    size=value.get("size")
+                ))
+            elif value.get("type") == "directory":
+                child_node = self._dict_to_filenode(
+                    value.get("children", {}), 
+                    key
+                )
+                children.append(child_node)
+        
+        return FileNode(
+            name=name,
+            path="",
+            type="directory",
+            children=children if children else None
+        )

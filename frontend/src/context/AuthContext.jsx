@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '../api/supabase'
+import React, { createContext, useContext, useEffect, useState } from 'react'
+import { signUp as apiSignUp, signIn as apiSignIn, signOut as apiSignOut, getSession } from '../api/api'
 
 const AuthContext = createContext({})
 
@@ -14,33 +14,69 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    const checkSession = async () => {
+      try {
+        const token = localStorage.getItem('access_token')
+        
+        if (!token) {
+          setUser(null)
+          setLoading(false)
+          return
+        }
+        
+        const response = await getSession()
+        if (response.success && response.user) {
+          setUser(response.user)
+        } else {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          setUser(null)
+        }
+      } catch (error) {
+        console.error('Session check failed:', error)
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
-
-    return () => subscription.unsubscribe()
+    checkSession()
   }, [])
 
   const signUp = async (email, password) => {
-    const { error } = await supabase.auth.signUp({ email, password })
-    if (error) throw error
+    try {
+      const response = await apiSignUp(email, password)
+      if (response.success) {
+        setUser(response.user)
+      }
+      return response
+    } catch (error) {
+      console.error('Sign up error in context:', error)
+      throw error
+    }
   }
 
   const signIn = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    try {
+      const response = await apiSignIn(email, password)
+      if (response.success) {
+        setUser(response.user)
+      }
+      return response
+    } catch (error) {
+      console.error('Sign in error in context:', error)
+      throw error
+    }
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    try {
+      await apiSignOut()
+    } catch (error) {
+      console.error('Sign out error:', error)
+    } finally {
+      setUser(null)
+    }
   }
 
   const value = {

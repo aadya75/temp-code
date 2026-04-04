@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { getAnalysisHistory, deleteAnalysis } from '../api/supabase'
+import { getAnalysisHistory } from '../api/api'
+import { deleteAnalysis } from '../api/supabase'
 import './Dashboard.css'
 
 const Dashboard = ({ onSelectAnalysis }) => {
@@ -17,8 +18,13 @@ const Dashboard = ({ onSelectAnalysis }) => {
 
   const loadAnalyses = async () => {
     try {
-      const data = await getAnalysisHistory(user.id)
-      setAnalyses(data)
+      const response = await getAnalysisHistory(user.id)
+      // getAnalysisHistory returns { success, data } — unwrap correctly
+      if (response && response.success) {
+        setAnalyses(response.data || [])
+      } else {
+        setAnalyses([])
+      }
     } catch (error) {
       console.error('Error loading analyses:', error)
     } finally {

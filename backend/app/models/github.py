@@ -32,5 +32,23 @@ class SourceCodeUploadResponse(BaseModel):
     minio_path: str
     directory_tree: Dict[str, Any]
 
+# Supabase DB Models
+class SaveAnalysisRequest(BaseModel):
+    user_id: str
+    repo_url: str
+    repo_name: str
+    full_name: str
+    description: Optional[str]
+    stars: int
+    forks: int
+    language: Optional[str]
+    file_tree: Dict[str, Any]
+
+class SaveKnowledgeGraphRequest(BaseModel):
+    repo_id: int
+    graph_data: Dict[str, Any]
+    nodes_count: int
+    edges_count: int
+
 # Update forward reference
 FileNode.model_rebuild()
