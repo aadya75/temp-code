@@ -1,0 +1,129 @@
+.file-tree {
+  background: #1e1e1e;
+  color: #cccccc;
+  height: 100%;
+  overflow-y: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+}
+
+.file-tree-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #2d2d2d;
+  background: #252526;
+}
+
+.file-tree-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #cccccc;
+}
+
+.file-tree-content {
+  padding: 8px 0;
+}
+
+.tree-item {
+  user-select: none;
+}
+
+.tree-item-content {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.tree-item-content:hover {
+  background-color: #2a2d2e;
+}
+
+.directory .tree-item-content {
+  font-weight: 500;
+}
+
+.file {
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.file:hover {
+  background-color: #2a2d2e;
+}
+
+.file.selected {
+  background-color: #094771;
+}
+
+.folder-icon, .file-icon {
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.item-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-count {
+  font-size: 11px;
+  color: #858585;
+  margin-left: 8px;
+}
+
+.file-size {
+  font-size: 11px;
+  color: #858585;
+  margin-left: 8px;
+}
+
+.tree-children {
+  margin-left: 8px;
+}
+
+.empty-tree {
+  padding: 20px;
+  text-align: center;
+  color: #858585;
+  font-size: 12px;
+}
+
+/* Scrollbar styling */
+.file-tree::-webkit-scrollbar {
+  width: 10px;
+}
+
+.file-tree::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.file-tree::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 5px;
+}
+
+.file-tree::-webkit-scrollbar-thumb:hover {
+  background: #4e4e4e;
+}
+
+/* Add to existing FileTree.css */
+.empty-tree {
+  padding: 20px;
+  text-align: center;
+  color: #858585;
+  font-size: 12px;
+}
+
+.empty-tree p {
+  margin: 0;
+}
+
+.empty-tree-sub {
+  font-size: 11px;
+  margin-top: 8px;
+  opacity: 0.7;
+}
