@@ -1,0 +1,102 @@
+.file-viewer {
+  background: #1e1e1e;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.file-viewer-header {
+  background: #252526;
+  border-bottom: 1px solid #2d2d2d;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-icon-viewer {
+  background: #0e639c;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.file-path {
+  font-size: 13px;
+  color: #cccccc;
+}
+
+.file-meta {
+  font-size: 12px;
+  color: #858585;
+}
+
+.file-viewer-content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.loading-container, .error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #cccccc;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #2d2d2d;
+  border-top-color: #0e639c;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.code-block {
+  margin: 0;
+  padding: 16px;
+  background: #1e1e1e;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #d4d4d4;
+}
+
+.code-block code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* Scrollbar for code */
+.code-block::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.code-block::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.code-block::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 5px;
+}
