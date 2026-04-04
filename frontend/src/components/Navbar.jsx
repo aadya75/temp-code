@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import LoginModal from './LoginModal'
 import './Navbar.css'
 
-const Navbar = ({ onGetStarted }) => {
+const Navbar = ({ onGetStarted, onDashboard, currentView }) => {
   const { user, signOut, isAuthenticated } = useAuth()
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
 
@@ -15,17 +15,26 @@ const Navbar = ({ onGetStarted }) => {
     <>
       <nav className="navbar">
         <div className="navbar-container">
-          <div className="navbar-brand">
+          <div className="navbar-brand" onClick={onDashboard} style={{ cursor: 'pointer' }}>
             <h1>📊 GitHub Analyzer Pro</h1>
           </div>
           
           <div className="navbar-actions">
             {isAuthenticated ? (
               <>
-                <span className="user-email">{user.email}</span>
-                <button className="btn-get-started" onClick={onGetStarted}>
-                  Analyze Repo
+                <button 
+                  className={`nav-btn ${currentView === 'dashboard' ? 'active' : ''}`}
+                  onClick={onDashboard}
+                >
+                  Dashboard
                 </button>
+                <button 
+                  className={`nav-btn ${currentView === 'analyzer' ? 'active' : ''}`}
+                  onClick={onGetStarted}
+                >
+                  New Analysis
+                </button>
+                <span className="user-email">{user.email}</span>
                 <button className="btn-logout" onClick={handleLogout}>
                   Logout
                 </button>

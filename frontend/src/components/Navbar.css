@@ -64,3 +64,77 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+/* Add to existing Navbar.css */
+.nav-btn {
+  background: transparent;
+  border: none;
+  color: #cccccc;
+  padding: 0.5rem 1rem;
+  margin: 0 0.25rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.nav-btn:hover {
+  background: #2d2d2d;
+  color: #ffffff;
+}
+
+.nav-btn.active {
+  background: #0e639c;
+  color: white;
+}
+
+/* Add to repo-actions-sidebar in App.css */
+.repo-actions-sidebar {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.btn-graph, .btn-dashboard {
+  flex: 1;
+  padding: 0.4rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.btn-graph {
+  background: #4ec9b0;
+  color: #1e1e1e;
+}
+
+.btn-graph:hover {
+  background: #5fd4bb;
+}
+
+.btn-dashboard {
+  background: #2d2d2d;
+  color: #cccccc;
+}
+
+.btn-dashboard:hover {
+  background: #3d3d3d;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.btn-graph-main {
+  background: #4ec9b0;
+  color: #1e1e1e;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}

@@ -1,15 +1,19 @@
 import { useState } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { fetchRepoData, fetchRepoTree, buildFileTree, treeToArray } from './api/github'
+import { saveAnalysis, getAnalysisById } from './api/supabase'
 import RepoDialog from './components/RepoDialog'
 import FileTree from './components/FileTree'
 import FileViewer from './components/FileViewer'
 import Navbar from './components/Navbar'
+import Dashboard from './components/Dashboard'
+import KnowledgeGraph from './components/KnowledgeGraph'
 import './App.css'
 
 // Separate component that uses auth
 const AppContent = () => {
-  const { isAuthenticated } = useAuth()
+  const { user, isAuthenticated } = useAuth()
+  const [currentView, setCurrentView] = useState('dashboard') // 'dashboard', 'analyzer'
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [repoInfo, setRepoInfo] = useState(null)
@@ -17,6 +21,8 @@ const AppContent = () => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [currentRepoUrl, setCurrentRepoUrl] = useState('')
   const [treeLoading, setTreeLoading] = useState(false)
+  const [currentAnalysisId, setCurrentAnalysisId] = useState(null)
+  const [showGraph, setShowGraph] = useState(false)
 
   const handleAnalyzeRepo = async (url) => {
     if (!isAuthenticated) {
@@ -44,6 +50,10 @@ const AppContent = () => {
         const treeArray = treeToArray(treeObj)
         setFileTree(treeArray)
         
+        // Save analysis to database
+        const savedAnalysis = await saveAnalysis(user.id, repoResult.data, treeArray)
+        setCurrentAnalysisId(savedAnalysis.id)
+        
         if (treeArray.length === 0) {
           alert('No files found in this repository.')
         }
@@ -52,6 +62,7 @@ const AppContent = () => {
       }
       
       setIsDialogOpen(false)
+      setCurrentView('analyzer')
     } catch (error) {
       console.error('Analysis error:', error)
       alert(`Error: ${error.message}`)
@@ -59,6 +70,24 @@ const AppContent = () => {
       setLoading(false)
       setTreeLoading(false)
     }
+  }
+
+  const handleLoadAnalysis = async (analysis) => {
+    setLoading(true)
+    setRepoInfo({
+      full_name: analysis.full_name,
+      name: analysis.repo_name,
+      description: analysis.description,
+      stargazers_count: analysis.stars,
+      forks_count: analysis.forks,
+      language: analysis.language,
+      html_url: analysis.repo_url
+    })
+    setFileTree(analysis.file_tree || [])
+    setCurrentAnalysisId(analysis.id)
+    setCurrentRepoUrl(analysis.repo_url)
+    setCurrentView('analyzer')
+    setLoading(false)
   }
 
   const handleFileSelect = (file) => {
@@ -70,13 +99,25 @@ const AppContent = () => {
     setFileTree([])
     setSelectedFile(null)
     setCurrentRepoUrl('')
+    setCurrentAnalysisId(null)
+    setCurrentView('dashboard')
+  }
+
+  const handleNewAnalysis = () => {
+    setIsDialogOpen(true)
   }
 
   return (
     <div className="app">
-      <Navbar onGetStarted={() => setIsDialogOpen(true)} />
+      <Navbar 
+        onGetStarted={handleNewAnalysis}
+        onDashboard={() => setCurrentView('dashboard')}
+        currentView={currentView}
+      />
 
-      {repoInfo ? (
+      {currentView === 'dashboard' ? (
+        <Dashboard onSelectAnalysis={handleLoadAnalysis} />
+      ) : repoInfo ? (
         <div className="analysis-container">
           <aside className="sidebar">
             <div className="repo-header">
@@ -85,6 +126,21 @@ const AppContent = () => {
                 <p className="repo-desc">{repoInfo.description.slice(0, 100)}...</p>
               )}
               {treeLoading && <div className="loading-tree">Loading files...</div>}
+              
+              <div className="repo-actions-sidebar">
+                <button 
+                  className="btn-graph"
+                  onClick={() => setShowGraph(true)}
+                >
+                  🧠 Knowledge Graph
+                </button>
+                <button 
+                  className="btn-dashboard"
+                  onClick={handleReset}
+                >
+                  📊 Dashboard
+                </button>
+              </div>
             </div>
             {!treeLoading && (
               <FileTree 
@@ -114,17 +170,22 @@ const AppContent = () => {
                       💻 {repoInfo.language || 'N/A'}
                     </div>
                   </div>
-                  <a 
-                    href={repoInfo.html_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="github-link"
-                  >
-                    View on GitHub →
-                  </a>
-                  <button className="btn-new-analysis" onClick={handleReset}>
-                    Analyze Another Repo
-                  </button>
+                  <div className="action-buttons">
+                    <a 
+                      href={repoInfo.html_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="github-link"
+                    >
+                      View on GitHub →
+                    </a>
+                    <button 
+                      className="btn-graph-main"
+                      onClick={() => setShowGraph(true)}
+                    >
+                      🧠 Generate Knowledge Graph
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -138,7 +199,7 @@ const AppContent = () => {
             {!isAuthenticated && (
               <p className="login-prompt">🔐 Please login to start analyzing repos</p>
             )}
-            <button className="btn-hero" onClick={() => setIsDialogOpen(true)}>
+            <button className="btn-hero" onClick={handleNewAnalysis}>
               Get Started
             </button>
           </div>
@@ -151,6 +212,15 @@ const AppContent = () => {
         onSubmit={handleAnalyzeRepo}
         loading={loading}
       />
+
+      {showGraph && repoInfo && (
+        <KnowledgeGraph 
+          repoData={repoInfo}
+          fileTree={fileTree}
+          repoId={currentAnalysisId}
+          onClose={() => setShowGraph(false)}
+        />
+      )}
     </div>
   )
 }
