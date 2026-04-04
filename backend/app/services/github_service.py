@@ -1,22 +1,125 @@
-from github import Github, GithubException, ContentFile
+from github import Github, GithubException
 from typing import Dict, Any, List, Optional
-from app.models.github import FileNode
+import base64
 import logging
-import re
+import os
 from datetime import datetime
+from pydantic import BaseModel
+from typing import Optional
+
+class FileNode(BaseModel):
+    name: str          # Name of file/folder (e.g., "src", "index.js")
+    path: str          # Full path (e.g., "frontend/src/index.js")
+    type: str          # Either 'file' or 'directory'
+    size: Optional[int] = None  # File size in bytes (None for directories)
+    children: Optional[List['FileNode']] = None  # Nested items (only for directories)
 
 logger = logging.getLogger(__name__)
 
 class GitHubService:
     def __init__(self):
-        self.g = Github(timeout=30)
+        # Add your token to .env!
+        github_token = os.getenv("GITHUB_TOKEN", None)
+        self.g = Github(github_token, timeout=30) if github_token else Github(timeout=30)
+    
+    async def get_repo_contents(self, repo_url: str) -> Dict[str, Any]:
+        """Fetch repository using Git Trees API (3-4 calls total)"""
+        try:
+            # Parse URL
+            owner, repo_name = self.parse_github_url(repo_url)
+            
+            # API Call #1: Get repository
+            repo = self.g.get_repo(f"{owner}/{repo_name}")
+            
+            # API Call #2: Get default branch reference
+            default_branch = repo.default_branch
+            branch_ref = repo.get_git_ref(f"heads/{default_branch}")
+            
+            # API Call #3: Get the entire tree recursively (THIS IS THE MAGIC!)
+            # This returns ALL files and directories in ONE API call
+            tree = repo.get_git_tree(branch_ref.object.sha, recursive=True)
+            
+            # Build directory tree and collect file contents
+            file_tree = {}
+            files_content = {}
+            
+            # Process all items from the single tree response
+            for item in tree.tree:
+                if item.type == "blob":  # This is a file
+                    # Store file metadata
+                    path_parts = item.path.split('/')
+                    current_level = file_tree
+                    
+                    # Build nested dictionary structure
+                    for i, part in enumerate(path_parts):
+                        if i == len(path_parts) - 1:
+                            current_level[part] = {
+                                "type": "file",
+                                "size": item.size,
+                                "path": item.path
+                            }
+                        else:
+                            if part not in current_level:
+                                current_level[part] = {"type": "directory", "children": {}}
+                            current_level = current_level[part]["children"]
+                    
+                    # Optionally fetch file content (if needed)
+                    # This is an EXTRA call per file - only do if you really need content
+                    if item.size < 1000000:  # Only fetch files < 1MB
+                        try:
+                            file_content = repo.get_contents(item.path, ref=default_branch)
+                            files_content[item.path] = base64.b64decode(file_content.content).decode('utf-8', errors='ignore')
+                        except:
+                            files_content[item.path] = "Unable to decode"
+                    else:
+                        files_content[item.path] = f"File too large ({item.size} bytes)"
+            
+            # Convert nested dict to FileNode structure
+            tree_structure = self._dict_to_filenode(file_tree, repo_name)
+            
+            return {
+                "repo_name": repo_name,
+                "branch": default_branch,
+                "tree": tree_structure,
+                "files_content": files_content,
+                "fetched_at": datetime.now()
+            }
+            
+        except GithubException as e:
+            logger.error(f"GitHub API error: {e}")
+            raise Exception(f"Failed to fetch repository: {str(e)}")
+    
+    def _dict_to_filenode(self, data: Dict, name: str) -> FileNode:
+        """Convert nested dictionary to FileNode structure"""
+        children = []
+        
+        for key, value in data.items():
+            if value.get("type") == "file":
+                children.append(FileNode(
+                    name=key,
+                    path=value.get("path", key),
+                    type="file",
+                    size=value.get("size")
+                ))
+            else:
+                # Directory
+                child_node = self._dict_to_filenode(
+                    value.get("children", {}), 
+                    key
+                )
+                children.append(child_node)
+        
+        return FileNode(
+            name=name,
+            path="",
+            type="directory",
+            children=children
+        )
     
     def parse_github_url(self, url: str) -> tuple[str, str]:
         """Parse GitHub URL to extract owner and repo name"""
-        # Remove trailing slash if present
+        import re
         url = url.rstrip('/')
-        
-        # Pattern to match GitHub repo URLs
         pattern = r'github\.com/([^/]+)/([^/]+)'
         match = re.search(pattern, url)
         
@@ -26,110 +129,7 @@ class GitHubService:
         owner = match.group(1)
         repo_name = match.group(2)
         
-        # Remove .git suffix if present
         if repo_name.endswith('.git'):
             repo_name = repo_name[:-4]
         
         return owner, repo_name
-    
-    async def get_repo_contents(self, repo_url: str) -> Dict[str, Any]:
-        """Fetch repository contents and build directory tree"""
-        try:
-            # Parse URL
-            owner, repo_name = self.parse_github_url(repo_url)
-            
-            # Get repository
-            repo = self.g.get_repo(f"{owner}/{repo_name}")
-            
-            # Get default branch
-            default_branch = repo.default_branch
-            
-            # Build directory tree from root
-            contents = repo.get_contents("", ref=default_branch)
-            tree = await self._build_tree(contents, repo, default_branch)
-            
-            # Get all files content
-            files_content = await self._fetch_all_files(repo, default_branch)
-            
-            return {
-                "repo_name": repo_name,
-                "branch": default_branch,
-                "tree": tree,
-                "files_content": files_content,
-                "fetched_at": datetime.now()
-            }
-            
-        except GithubException as e:
-            logger.error(f"GitHub API error: {e}")
-            raise Exception(f"Failed to fetch repository: {str(e)}")
-        except Exception as e:
-            logger.error(f"Error fetching repo contents: {e}")
-            raise
-    
-    async def _build_tree(self, contents, repo, branch, path_prefix="") -> FileNode:
-        """Recursively build directory tree"""
-        if not contents:
-            return None
-        
-        # For a single ContentFile, handle appropriately
-        if not hasattr(contents, '__iter__'):
-            # This is a single file
-            node = FileNode(
-                name=contents.name,
-                path=contents.path,
-                type="file",
-                size=contents.size
-            )
-            return node
-        
-        # For directory listing
-        children = []
-        for content in contents:
-            if content.type == "dir":
-                # Get subdirectory contents
-                sub_contents = repo.get_contents(content.path, ref=branch)
-                child_node = await self._build_tree(sub_contents, repo, branch, content.path)
-                children.append(child_node)
-            else:
-                # File
-                node = FileNode(
-                    name=content.name,
-                    path=content.path,
-                    type="file",
-                    size=content.size
-                )
-                children.append(node)
-        
-        # Get directory name from path or use root
-        dir_name = path_prefix.split('/')[-1] if path_prefix else repo.name
-        
-        return FileNode(
-            name=dir_name,
-            path=path_prefix,
-            type="directory",
-            children=children
-        )
-    
-    async def _fetch_all_files(self, repo, branch) -> Dict[str, str]:
-        """Fetch content of all files in repository"""
-        files_content = {}
-        
-        def get_contents_recursively(path=""):
-            try:
-                contents = repo.get_contents(path, ref=branch)
-                for content in contents:
-                    if content.type == "file":
-                        try:
-                            # Decode file content
-                            file_content = content.decoded_content.decode('utf-8', errors='ignore')
-                            files_content[content.path] = file_content
-                        except Exception as e:
-                            logger.warning(f"Could not decode file {content.path}: {e}")
-                            files_content[content.path] = f"Binary or unreadable content: {str(e)}"
-                    elif content.type == "dir":
-                        get_contents_recursively(content.path)
-            except GithubException as e:
-                logger.error(f"Error fetching contents for {path}: {e}")
-        
-        get_contents_recursively()
-        return files_content
