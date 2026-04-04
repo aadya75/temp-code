@@ -2,18 +2,20 @@ import { useState } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { fetchRepoData, fetchRepoTree, buildFileTree, treeToArray } from './api/github'
 import { saveAnalysis, getAnalysisById } from './api/supabase'
+import { detectApiEndpoints, analyzeApiFlow } from './api/apiDetector'
 import RepoDialog from './components/RepoDialog'
 import FileTree from './components/FileTree'
 import FileViewer from './components/FileViewer'
 import Navbar from './components/Navbar'
 import Dashboard from './components/Dashboard'
 import KnowledgeGraph from './components/KnowledgeGraph'
+import ApiVisualization from './components/ApiVisualization'
 import './App.css'
 
 // Separate component that uses auth
 const AppContent = () => {
   const { user, isAuthenticated } = useAuth()
-  const [currentView, setCurrentView] = useState('dashboard') // 'dashboard', 'analyzer'
+  const [currentView, setCurrentView] = useState('dashboard')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [repoInfo, setRepoInfo] = useState(null)
@@ -23,6 +25,12 @@ const AppContent = () => {
   const [treeLoading, setTreeLoading] = useState(false)
   const [currentAnalysisId, setCurrentAnalysisId] = useState(null)
   const [showGraph, setShowGraph] = useState(false)
+  
+  // API Visualization states
+  const [showApiViz, setShowApiViz] = useState(false)
+  const [apiEndpoints, setApiEndpoints] = useState([])
+  const [apiFlows, setApiFlows] = useState([])
+  const [detectingApi, setDetectingApi] = useState(false)
 
   const handleAnalyzeRepo = async (url) => {
     if (!isAuthenticated) {
@@ -101,10 +109,41 @@ const AppContent = () => {
     setCurrentRepoUrl('')
     setCurrentAnalysisId(null)
     setCurrentView('dashboard')
+    setApiEndpoints([])
+    setApiFlows([])
   }
 
   const handleNewAnalysis = () => {
     setIsDialogOpen(true)
+  }
+
+  const handleDetectApi = async () => {
+    if (!repoInfo || !currentRepoUrl || !fileTree.length) {
+      alert('Please analyze a repository first')
+      return
+    }
+    
+    setDetectingApi(true)
+    try {
+      const { framework, endpoints } = await detectApiEndpoints(currentRepoUrl, fileTree)
+      setApiEndpoints(endpoints)
+      
+      // Analyze flow for each endpoint (limit to first 10 for performance)
+      const allFlows = []
+      for (const endpoint of endpoints.slice(0, 10)) {
+        const flow = await analyzeApiFlow(currentRepoUrl, endpoint, fileTree)
+        allFlows.push(...flow)
+      }
+      setApiFlows(allFlows)
+      setShowApiViz(true)
+      
+      console.log(`Detected ${endpoints.length} endpoints using ${framework}`)
+    } catch (error) {
+      console.error('API detection error:', error)
+      alert('Failed to detect API endpoints. The repository might not use a supported framework.')
+    } finally {
+      setDetectingApi(false)
+    }
   }
 
   return (
@@ -133,6 +172,13 @@ const AppContent = () => {
                   onClick={() => setShowGraph(true)}
                 >
                   🧠 Knowledge Graph
+                </button>
+                <button 
+                  className="btn-api"
+                  onClick={handleDetectApi}
+                  disabled={detectingApi}
+                >
+                  {detectingApi ? '🔍 Detecting...' : '🔌 API Routes'}
                 </button>
                 <button 
                   className="btn-dashboard"
@@ -183,7 +229,14 @@ const AppContent = () => {
                       className="btn-graph-main"
                       onClick={() => setShowGraph(true)}
                     >
-                      🧠 Generate Knowledge Graph
+                      🧠 Knowledge Graph
+                    </button>
+                    <button 
+                      className="btn-api-main"
+                      onClick={handleDetectApi}
+                      disabled={detectingApi}
+                    >
+                      {detectingApi ? '🔍 Detecting APIs...' : '🔌 API Routes'}
                     </button>
                   </div>
                 </div>
@@ -219,6 +272,15 @@ const AppContent = () => {
           fileTree={fileTree}
           repoId={currentAnalysisId}
           onClose={() => setShowGraph(false)}
+        />
+      )}
+
+      {showApiViz && repoInfo && (
+        <ApiVisualization 
+          endpoints={apiEndpoints}
+          flows={apiFlows}
+          onClose={() => setShowApiViz(false)}
+          repoName={repoInfo.full_name}
         />
       )}
     </div>

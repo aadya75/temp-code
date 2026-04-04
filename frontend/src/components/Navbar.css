@@ -1,140 +1,118 @@
 .navbar {
-  background: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  padding: 1rem 0;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
   position: sticky;
   top: 0;
   z-index: 100;
 }
 
 .navbar-container {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0.875rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+.navbar-brand {
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.navbar-brand:hover {
+  transform: scale(1.02);
+}
+
 .navbar-brand h1 {
   font-size: 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-brand);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  font-weight: 700;
 }
 
 .navbar-actions {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-sm);
   align-items: center;
 }
 
-.user-email {
-  color: #666;
-  font-size: 0.9rem;
+.nav-btn {
+  background: transparent;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
 }
 
-.btn-login, .btn-logout, .btn-get-started {
-  padding: 0.5rem 1.5rem;
+.nav-btn:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.nav-btn.active {
+  background: var(--surface-2);
+  color: var(--primary-light);
+  border-bottom: 2px solid var(--primary);
+}
+
+.user-email {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  padding: 0.25rem 0.75rem;
+  background: var(--surface-2);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-light);
+}
+
+.btn-login, .btn-logout {
+  padding: 0.5rem 1.25rem;
   border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
 .btn-login {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.btn-get-started {
-  background: #10b981;
+  background: var(--gradient-brand);
   color: white;
 }
 
 .btn-logout {
-  background: #ef4444;
-  color: white;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
 }
 
-.btn-login:hover, .btn-get-started:hover, .btn-logout:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-/* Add to existing Navbar.css */
-.nav-btn {
-  background: transparent;
-  border: none;
-  color: #cccccc;
-  padding: 0.5rem 1rem;
-  margin: 0 0.25rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.9rem;
+.btn-login:hover, .btn-logout:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
 }
 
-.nav-btn:hover {
-  background: #2d2d2d;
-  color: #ffffff;
-}
-
-.nav-btn.active {
-  background: #0e639c;
-  color: white;
-}
-
-/* Add to repo-actions-sidebar in App.css */
-.repo-actions-sidebar {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
-
-.btn-graph, .btn-dashboard {
-  flex: 1;
-  padding: 0.4rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  transition: all 0.2s;
-}
-
-.btn-graph {
-  background: #4ec9b0;
-  color: #1e1e1e;
-}
-
-.btn-graph:hover {
-  background: #5fd4bb;
-}
-
-.btn-dashboard {
-  background: #2d2d2d;
-  color: #cccccc;
-}
-
-.btn-dashboard:hover {
-  background: #3d3d3d;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 1rem;
-}
-
-.btn-graph-main {
-  background: #4ec9b0;
-  color: #1e1e1e;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
+@media (max-width: 768px) {
+  .navbar-container {
+    padding: 0.75rem 1rem;
+  }
+  
+  .navbar-brand h1 {
+    font-size: 1.2rem;
+  }
+  
+  .nav-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  
+  .user-email {
+    display: none;
+  }
 }
