@@ -1,10 +1,11 @@
 .navbar {
   background: rgba(10, 10, 10, 0.95);
   backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+  border-bottom: 1px solid var(--border-light);
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: var(--shadow-sm);
 }
 
 .navbar-container {
@@ -18,7 +19,10 @@
 
 .navbar-brand {
   cursor: pointer;
-  transition: transform var(--transition-fast);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 .navbar-brand:hover {
@@ -27,11 +31,12 @@
 
 .navbar-brand h1 {
   font-size: 1.5rem;
-  background: var(--gradient-brand);
+  background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .navbar-actions {
@@ -43,52 +48,72 @@
 .nav-btn {
   background: transparent;
   border: none;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 1.25rem;
   border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
+  position: relative;
+}
+
+.nav-btn::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--gradient-primary);
+  transition: all var(--transition-fast);
+  transform: translateX(-50%);
+}
+
+.nav-btn:hover::after {
+  width: 80%;
 }
 
 .nav-btn:hover {
-  background: var(--surface-2);
   color: var(--text-primary);
 }
 
 .nav-btn.active {
-  background: var(--surface-2);
   color: var(--primary-light);
-  border-bottom: 2px solid var(--primary);
+}
+
+.nav-btn.active::after {
+  width: 80%;
 }
 
 .user-email {
   font-size: 0.875rem;
   color: var(--text-secondary);
-  padding: 0.25rem 0.75rem;
-  background: var(--surface-2);
+  padding: 0.25rem 1rem;
+  background: var(--surface-glass);
   border-radius: var(--radius-full);
   border: 1px solid var(--border-light);
+  font-family: var(--font-mono);
 }
 
 .btn-login, .btn-logout {
-  padding: 0.5rem 1.25rem;
+  padding: 0.5rem 1.5rem;
   border: none;
   border-radius: var(--radius-full);
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-login {
-  background: var(--gradient-brand);
+  background: var(--gradient-primary);
   color: white;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-logout {
-  background: var(--surface-2);
+  background: var(--surface-glass);
   color: var(--text-secondary);
   border: 1px solid var(--border-light);
 }

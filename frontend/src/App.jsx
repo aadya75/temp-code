@@ -266,14 +266,25 @@ const AppContent = () => {
         loading={loading}
       />
 
-      {showGraph && repoInfo && (
+      {/* {showGraph && repoInfo && (
         <KnowledgeGraph 
           repoData={repoInfo}
           fileTree={fileTree}
           repoId={currentAnalysisId}
+          repoUrl={currentRepoUrl}
           onClose={() => setShowGraph(false)}
         />
-      )}
+      )} */}
+
+      {showGraph && repoInfo && (
+  <KnowledgeGraph 
+    repoData={repoInfo}
+    fileTree={fileTree}
+    repoId={currentAnalysisId}  // Make sure this is set
+    repoUrl={currentRepoUrl}
+    onClose={() => setShowGraph(false)}
+  />
+)}
 
       {showApiViz && repoInfo && (
         <ApiVisualization 
