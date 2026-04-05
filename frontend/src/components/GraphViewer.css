@@ -1,0 +1,70 @@
+.graph-viewer {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.graph-container {
+  flex: 1;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* When code viewer is open, shrink graph */
+.graph-viewer:has(.code-viewer-panel) .graph-container {
+  flex: 0.6;
+}
+
+.code-viewer-panel {
+  width: 40%;
+  min-width: 400px;
+  background: #1e1e1e;
+  border-left: 1px solid #2d2d2d;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .graph-viewer:has(.code-viewer-panel) .graph-container {
+    flex: 0.5;
+  }
+
+  .code-viewer-panel {
+    width: 50%;
+    min-width: 350px;
+  }
+}
+
+@media (max-width: 768px) {
+  .graph-viewer {
+    flex-direction: column;
+  }
+
+  .graph-viewer:has(.code-viewer-panel) .graph-container {
+    flex: 0.4;
+  }
+
+  .code-viewer-panel {
+    width: 100%;
+    min-width: auto;
+    height: 60%;
+    border-left: none;
+    border-top: 1px solid #2d2d2d;
+  }
+}
