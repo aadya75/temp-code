@@ -5,7 +5,7 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -13,32 +13,13 @@
   animation: fadeIn 0.2s ease;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 .dialog-container {
   background: white;
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   width: 90%;
   max-width: 500px;
   animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(30px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  box-shadow: var(--shadow-2xl);
 }
 
 .dialog-header {
@@ -50,8 +31,9 @@
 
 .dialog-header h2 {
   font-size: 1.5rem;
-  color: #333;
+  color: var(--gray-900);
   margin: 0;
+  font-weight: 600;
 }
 
 .dialog-close {
@@ -59,13 +41,20 @@
   border: none;
   font-size: 2rem;
   cursor: pointer;
-  color: #999;
-  transition: color 0.2s;
+  color: var(--gray-400);
+  transition: all var(--transition-fast);
   line-height: 1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
 }
 
 .dialog-close:hover {
-  color: #333;
+  background: var(--gray-100);
+  color: var(--gray-900);
 }
 
 .dialog-body {
@@ -73,32 +62,34 @@
 }
 
 .dialog-description {
-  color: #666;
+  color: var(--gray-600);
   margin-bottom: 1rem;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 .dialog-input {
   width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  transition: all var(--transition-fast);
+  font-family: var(--font-mono);
 }
 
 .dialog-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .dialog-input.error {
-  border-color: #ef4444;
+  border-color: var(--error);
 }
 
 .dialog-error {
-  color: #ef4444;
-  font-size: 0.875rem;
+  color: var(--error);
+  font-size: 0.75rem;
   margin-top: 0.5rem;
 }
 
@@ -112,33 +103,49 @@
 .btn-cancel, .btn-submit {
   padding: 0.6rem 1.5rem;
   border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .btn-cancel {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--gray-100);
+  color: var(--gray-700);
 }
 
 .btn-cancel:hover {
-  background: #e5e7eb;
+  background: var(--gray-200);
 }
 
 .btn-submit {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   color: white;
 }
 
 .btn-submit:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-cancel:disabled, .btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }

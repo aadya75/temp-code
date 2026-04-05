@@ -1,27 +1,27 @@
 .file-tree {
-  background: #1e1e1e;
-  color: #cccccc;
+  background: var(--surface-1);
   height: 100%;
   overflow-y: auto;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
 }
 
 .file-tree-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid #2d2d2d;
-  background: #252526;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface-2);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .file-tree-header h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #cccccc;
-}
-
-.file-tree-content {
-  padding: 8px 0;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .tree-item {
@@ -31,35 +31,48 @@
 .tree-item-content {
   display: flex;
   align-items: center;
-  padding: 4px 0;
+  padding: 0.25rem 0;
   cursor: pointer;
-  transition: background-color 0.1s;
+  transition: background-color var(--transition-fast);
+  gap: 0.5rem;
 }
 
 .tree-item-content:hover {
-  background-color: #2a2d2e;
+  background-color: var(--surface-2);
 }
 
 .directory .tree-item-content {
   font-weight: 500;
+  color: var(--text-primary);
 }
 
 .file {
   cursor: pointer;
-  transition: background-color 0.1s;
+  transition: background-color var(--transition-fast);
 }
 
 .file:hover {
-  background-color: #2a2d2e;
+  background-color: var(--surface-2);
 }
 
 .file.selected {
-  background-color: #094771;
+  background-color: rgba(59, 130, 246, 0.1);
+  position: relative;
+}
+
+.file.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--primary);
 }
 
 .folder-icon, .file-icon {
-  margin-right: 8px;
-  font-size: 14px;
+  font-size: 0.875rem;
+  flex-shrink: 0;
 }
 
 .item-name {
@@ -67,63 +80,34 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text-secondary);
+}
+
+.file .item-name {
+  color: var(--text-secondary);
 }
 
 .item-count {
-  font-size: 11px;
-  color: #858585;
-  margin-left: 8px;
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .file-size {
-  font-size: 11px;
-  color: #858585;
-  margin-left: 8px;
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+  margin-left: 0.5rem;
+  flex-shrink: 0;
 }
 
 .tree-children {
-  margin-left: 8px;
+  margin-left: 0.5rem;
 }
 
 .empty-tree {
-  padding: 20px;
+  padding: 2rem 1rem;
   text-align: center;
-  color: #858585;
-  font-size: 12px;
-}
-
-/* Scrollbar styling */
-.file-tree::-webkit-scrollbar {
-  width: 10px;
-}
-
-.file-tree::-webkit-scrollbar-track {
-  background: #1e1e1e;
-}
-
-.file-tree::-webkit-scrollbar-thumb {
-  background: #424242;
-  border-radius: 5px;
-}
-
-.file-tree::-webkit-scrollbar-thumb:hover {
-  background: #4e4e4e;
-}
-
-/* Add to existing FileTree.css */
-.empty-tree {
-  padding: 20px;
-  text-align: center;
-  color: #858585;
-  font-size: 12px;
-}
-
-.empty-tree p {
-  margin: 0;
-}
-
-.empty-tree-sub {
-  font-size: 11px;
-  margin-top: 8px;
-  opacity: 0.7;
+  color: var(--text-tertiary);
+  font-size: 0.8125rem;
 }

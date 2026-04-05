@@ -23,8 +23,7 @@ export const fetchRepoData = async (repoUrl) => {
   }
 }
 
-// Fetch repository file tree
-export const fetchRepoTree = async (repoUrl) => {
+export const fetchRepoTree = async (repoUrl, path = '') => {
   try {
     const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
     if (!match) {
@@ -33,16 +32,13 @@ export const fetchRepoTree = async (repoUrl) => {
     
     const [, owner, repo] = match
     
-    // First get the default branch
     const repoResponse = await axios.get(`https://api.github.com/repos/${owner}/${repo}`)
     const defaultBranch = repoResponse.data.default_branch
     
-    // Get the tree recursively
     const treeResponse = await axios.get(
       `https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`
     )
     
-    // Filter out only files (blobs) and directories (trees)
     const tree = treeResponse.data.tree.filter(item => 
       item.type === 'blob' || item.type === 'tree'
     )
@@ -60,12 +56,57 @@ export const fetchRepoTree = async (repoUrl) => {
   }
 }
 
-// Build tree structure from flat list - FIXED VERSION
+// NEW: Fetch specific lines from a file
+export const fetchFileLines = async (repoUrl, filePath, startLine, endLine) => {
+  try {
+    const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
+    if (!match) {
+      throw new Error('Invalid GitHub URL format')
+    }
+    
+    const [, owner, repo] = match
+    
+    // Fetch the raw file content
+    const response = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`,
+      { 
+        headers: { 
+          'Accept': 'application/vnd.github.v3.raw'
+        } 
+      }
+    )
+    
+    const content = typeof response.data === 'string' ? response.data : ''
+    const lines = content.split('\n')
+    
+    // Extract specific lines (adjust for 0-index)
+    const startIdx = Math.max(0, startLine - 1)
+    const endIdx = Math.min(lines.length, endLine)
+    const selectedLines = lines.slice(startIdx, endIdx)
+    
+    return {
+      success: true,
+      data: {
+        content: selectedLines.join('\n'),
+        totalLines: lines.length,
+        startLine,
+        endLine: Math.min(endLine, lines.length)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch file lines:', error)
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message
+    }
+  }
+}
+
+// Build tree structure from flat list
 export const buildFileTree = (files) => {
   const root = {}
   
   files.forEach(file => {
-    // Skip if path is undefined or null
     if (!file || !file.path) return
     
     const parts = file.path.split('/')
@@ -73,7 +114,6 @@ export const buildFileTree = (files) => {
     
     parts.forEach((part, index) => {
       if (index === parts.length - 1) {
-        // This is a file (blob)
         if (file.type === 'blob') {
           currentLevel[part] = {
             name: part,
@@ -82,7 +122,6 @@ export const buildFileTree = (files) => {
             size: file.size || 0
           }
         } else if (file.type === 'tree') {
-          // This is a directory
           if (!currentLevel[part]) {
             currentLevel[part] = {
               name: part,
@@ -93,7 +132,6 @@ export const buildFileTree = (files) => {
           }
         }
       } else {
-        // This is a directory in the path
         if (!currentLevel[part]) {
           currentLevel[part] = {
             name: part,
@@ -110,7 +148,6 @@ export const buildFileTree = (files) => {
   return root
 }
 
-// Convert tree object to array for rendering - FIXED VERSION
 export const treeToArray = (treeObj) => {
   if (!treeObj) return []
   
