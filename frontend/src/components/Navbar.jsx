@@ -22,6 +22,13 @@ const Navbar = ({ onGetStarted, onDashboard, currentView }) => {
           <div className="navbar-actions">
             {isAuthenticated ? (
               <>
+              
+{/* <button 
+    onClick={() => props.onOpenTraceability?.()}
+    className="nav-btn traceability-btn"
+>
+    🔍 Traceability
+</button> */}
                 <button 
                   className={`nav-btn ${currentView === 'dashboard' ? 'active' : ''}`}
                   onClick={onDashboard}

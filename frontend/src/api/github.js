@@ -1,132 +1,170 @@
-import axios from 'axios'
+import { traceability } from '../utils/traceability';
 
-export const fetchRepoData = async (repoUrl) => {
-  try {
-    const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
-    if (!match) {
-      throw new Error('Invalid GitHub URL format')
+// Wrap your existing fetchRepoData function
+export const fetchRepoData = async (url) => {
+    traceability.startTrace('fetch-repo-data', { repoUrl: url });
+    try {
+        // Your existing code here
+        const response = await fetch(`/api/v1/github/repo?url=${encodeURIComponent(url)}`);
+        
+        // CRITICAL FIX: Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const htmlText = await response.text();
+            console.error('Received HTML instead of JSON. First 200 chars:', htmlText.substring(0, 200));
+            throw new Error('Backend API returned HTML. Please check if your backend server is running and the endpoint is correct.');
+        }
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        traceability.endTrace();
+        
+        // Ensure consistent return format
+        if (data.success !== undefined) {
+            return data;
+        }
+        return { success: true, data: data };
+    } catch (error) {
+        traceability.endTrace();
+        console.error('fetchRepoData error:', error);
+        return { success: false, error: error.message };
     }
-    
-    const [, owner, repo] = match
-    
-    const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}`)
-    
-    return {
-      success: true,
-      data: response.data
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message || 'Failed to fetch repository'
-    }
-  }
-}
+};
 
-// Fetch repository file tree
-export const fetchRepoTree = async (repoUrl) => {
-  try {
-    const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
-    if (!match) {
-      throw new Error('Invalid GitHub URL format')
+// Wrap fetchRepoTree
+export const fetchRepoTree = async (url) => {
+    traceability.startTrace('fetch-repo-tree', { repoUrl: url });
+    try {
+        const response = await fetch(`/api/v1/github/tree?url=${encodeURIComponent(url)}`);
+        
+        // CRITICAL FIX: Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const htmlText = await response.text();
+            console.error('Received HTML instead of JSON. First 200 chars:', htmlText.substring(0, 200));
+            throw new Error('Backend API returned HTML. Please check if your backend server is running and the endpoint is correct.');
+        }
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        traceability.endTrace();
+        
+        // Ensure consistent return format
+        if (data.success !== undefined) {
+            return data;
+        }
+        return { success: true, data: data.tree || data };
+    } catch (error) {
+        traceability.endTrace();
+        console.error('fetchRepoTree error:', error);
+        return { success: false, error: error.message };
     }
-    
-    const [, owner, repo] = match
-    
-    // First get the default branch
-    const repoResponse = await axios.get(`https://api.github.com/repos/${owner}/${repo}`)
-    const defaultBranch = repoResponse.data.default_branch
-    
-    // Get the tree recursively
-    const treeResponse = await axios.get(
-      `https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`
-    )
-    
-    // Filter out only files (blobs) and directories (trees)
-    const tree = treeResponse.data.tree.filter(item => 
-      item.type === 'blob' || item.type === 'tree'
-    )
-    
-    return {
-      success: true,
-      data: tree
-    }
-  } catch (error) {
-    console.error('Tree fetch error:', error)
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message || 'Failed to fetch repository tree'
-    }
-  }
-}
+};
 
-// Build tree structure from flat list - FIXED VERSION
+// Build file tree from flat structure
 export const buildFileTree = (files) => {
-  const root = {}
-  
-  files.forEach(file => {
-    // Skip if path is undefined or null
-    if (!file || !file.path) return
-    
-    const parts = file.path.split('/')
-    let currentLevel = root
-    
-    parts.forEach((part, index) => {
-      if (index === parts.length - 1) {
-        // This is a file (blob)
-        if (file.type === 'blob') {
-          currentLevel[part] = {
-            name: part,
-            type: 'file',
-            path: file.path,
-            size: file.size || 0
-          }
-        } else if (file.type === 'tree') {
-          // This is a directory
-          if (!currentLevel[part]) {
-            currentLevel[part] = {
-              name: part,
-              type: 'directory',
-              path: parts.slice(0, index + 1).join('/'),
-              children: {}
-            }
-          }
-        }
-      } else {
-        // This is a directory in the path
-        if (!currentLevel[part]) {
-          currentLevel[part] = {
-            name: part,
-            type: 'directory',
-            path: parts.slice(0, index + 1).join('/'),
-            children: {}
-          }
-        }
-        currentLevel = currentLevel[part].children
-      }
-    })
-  })
-  
-  return root
-}
-
-// Convert tree object to array for rendering - FIXED VERSION
-export const treeToArray = (treeObj) => {
-  if (!treeObj) return []
-  
-  return Object.keys(treeObj).map(key => {
-    const item = treeObj[key]
-    if (item.type === 'directory') {
-      return {
-        ...item,
-        children: treeToArray(item.children)
-      }
+    if (!files || !Array.isArray(files)) {
+        console.warn('buildFileTree received invalid files:', files);
+        return {};
     }
-    return item
-  })
-}
+    
+    const tree = {};
+    
+    files.forEach(file => {
+        if (!file.path) return;
+        
+        const parts = file.path.split('/');
+        let current = tree;
+        
+        parts.forEach((part, index) => {
+            if (index === parts.length - 1) {
+                // This is a file
+                if (!current.files) current.files = [];
+                current.files.push({
+                    name: part,
+                    path: file.path,
+                    type: 'file',
+                    size: file.size || 0,
+                    sha: file.sha
+                });
+            } else {
+                // This is a directory
+                if (!current.dirs) current.dirs = {};
+                if (!current.dirs[part]) {
+                    current.dirs[part] = {};
+                }
+                current = current.dirs[part];
+            }
+        });
+    });
+    
+    return tree;
+};
 
-export const validateGithubUrl = (url) => {
-  const regex = /^https?:\/\/github\.com\/[\w.-]+\/[\w.-]+/
-  return regex.test(url)
-}
+// Convert tree to array format
+export const treeToArray = (tree, parentPath = '') => {
+    if (!tree) return [];
+    
+    const result = [];
+    
+    // Add directories
+    if (tree.dirs) {
+        Object.keys(tree.dirs).forEach(dirName => {
+            const dirPath = parentPath ? `${parentPath}/${dirName}` : dirName;
+            const dirChildren = treeToArray(tree.dirs[dirName], dirPath);
+            result.push({
+                name: dirName,
+                path: dirPath,
+                type: 'directory',
+                children: dirChildren
+            });
+        });
+    }
+    
+    // Add files
+    if (tree.files) {
+        tree.files.forEach(file => {
+            result.push({
+                ...file,
+                type: 'file'
+            });
+        });
+    }
+    
+    return result;
+};
+
+// Optional: Add fetchFileContent if you need it
+export const fetchFileContent = async (repoUrl, filePath) => {
+    traceability.startTrace('fetch-file-content', { repoUrl, filePath });
+    try {
+        const response = await fetch(`/api/v1/github/content?url=${encodeURIComponent(repoUrl)}&path=${encodeURIComponent(filePath)}`);
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Backend API returned HTML instead of JSON');
+        }
+        
+        if (!response.ok) {
+            throw new Error(`Failed to fetch file: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        traceability.endTrace();
+        return data;
+    } catch (error) {
+        traceability.endTrace();
+        console.error('fetchFileContent error:', error);
+        return { success: false, error: error.message };
+    }
+};

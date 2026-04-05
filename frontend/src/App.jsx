@@ -10,6 +10,7 @@ import Navbar from './components/Navbar'
 import Dashboard from './components/Dashboard'
 import KnowledgeGraph from './components/KnowledgeGraph'
 import ApiVisualization from './components/ApiVisualization'
+import CrossFunctionalGraph from './components/CrossFunctionalGraph'  // ADD THIS IMPORT
 import './App.css'
 
 // Separate component that uses auth
@@ -25,6 +26,7 @@ const AppContent = () => {
   const [treeLoading, setTreeLoading] = useState(false)
   const [currentAnalysisId, setCurrentAnalysisId] = useState(null)
   const [showGraph, setShowGraph] = useState(false)
+  const [showCrossGraph, setShowCrossGraph] = useState(false)  // ADD THIS STATE
   
   // API Visualization states
   const [showApiViz, setShowApiViz] = useState(false)
@@ -167,6 +169,22 @@ const AppContent = () => {
               {treeLoading && <div className="loading-tree">Loading files...</div>}
               
               <div className="repo-actions-sidebar">
+                {/* ADD CROSS-FUNCTIONAL GRAPH BUTTON */}
+                <button 
+                  className="btn-cross-graph"
+                  onClick={() => setShowCrossGraph(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 16px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    marginRight: '10px'
+                  }}
+                >
+                  🔍 Cross-Functional Graph
+                </button>
                 <button 
                   className="btn-graph"
                   onClick={() => setShowGraph(true)}
@@ -225,6 +243,22 @@ const AppContent = () => {
                     >
                       View on GitHub →
                     </a>
+                    {/* ADD CROSS-FUNCTIONAL GRAPH BUTTON IN MAIN PANEL */}
+                    <button 
+                      className="btn-cross-graph-main"
+                      onClick={() => setShowCrossGraph(true)}
+                      style={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '12px 24px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        margin: '10px'
+                      }}
+                    >
+                      🔍 Cross-Functional Graph
+                    </button>
                     <button 
                       className="btn-graph-main"
                       onClick={() => setShowGraph(true)}
@@ -271,6 +305,7 @@ const AppContent = () => {
           repoData={repoInfo}
           fileTree={fileTree}
           repoId={currentAnalysisId}
+          repoUrl={currentRepoUrl}
           onClose={() => setShowGraph(false)}
         />
       )}
@@ -281,6 +316,17 @@ const AppContent = () => {
           flows={apiFlows}
           onClose={() => setShowApiViz(false)}
           repoName={repoInfo.full_name}
+        />
+      )}
+
+      {/* ADD CROSS-FUNCTIONAL GRAPH COMPONENT */}
+      {showCrossGraph && repoInfo && (
+        <CrossFunctionalGraph 
+          onClose={() => setShowCrossGraph(false)}
+          repoInfo={repoInfo}
+          fileTree={fileTree}
+          apiEndpoints={apiEndpoints}
+          apiFlows={apiFlows}
         />
       )}
     </div>

@@ -19,7 +19,10 @@ class Settings(BaseSettings):
     
     # GitHub Settings
     github_api_timeout: int = 30
-    
+    github_token: str
+    supabase_url: str
+    supabase_anon_key: str
+  
     class Config:
         env_file = ".env"
         case_sensitive = False
